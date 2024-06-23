@@ -16,17 +16,15 @@ import streamlit as st
 import faiss
 from streamlit_chat import message
 
-st.write(
-    "Has environment variables been set:",
-    os.environ["OPENAI_API_KEY"] == st.secrets["OPENAI_API_KEY"],
-)
-openai.api_key = os.environ["OPENAI_API_KEY"]
+#openai.api_key = os.environ["OPENAI_API_KEY"]
 
 def handle_session_state():
     """Initialize the session state if not already done."""
     st.session_state.setdefault("generated", [])
     st.session_state.setdefault("past", [])
     st.session_state.setdefault("q_count", 0)
+   
+
 
 def initialize_llm():
     llm = ChatOpenAI(
@@ -109,42 +107,50 @@ def query(payload, llm, retriever):
 def main():
     st.title("LangChain")
     st.markdown("### Welcome to the Rotten Tomatoes Movies Bot")
-
-    try:
-        
-        handle_session_state()
-        documents = load_data(Path("rotten_tomatoes_movies.csv"))
-        embeddings = create_embeddings()
-        index = create_index(documents, embeddings)
-        query_engine = create_query_engine(index)
-        llm = initialize_llm()
-        # Get the user input
-        user_input = get_text(q_count=st.session_state["q_count"])
-        if user_input and user_input.strip() != "":
-            output = query(
-                {
-                    "inputs": {
-                        "text": user_input,
-                    }
-                },
-                llm,
-                query_engine,
+    user_openai_api_key = st.sidebar.text_input("Enter your OpenAI API Key:", placeholder="sk-...", type="password")
+    if user_openai_api_key:
+        openai.api_key = user_openai_api_key
+        st.write(
+            "Has environment variables been set:",
+            user_openai_api_key == st.secrets["OPENAI_API_KEY"],
             )
-            # Increment q_count, append user input and generated output to session state
-            st.session_state["q_count"] += 1
-            st.session_state["past"].append(user_input)
-            if output:
-                st.session_state["generated"].append(output)
-            if st.session_state["generated"]:
-                for i in range(len(st.session_state["generated"]) - 1, -1, -1):
-                    message(st.session_state["past"][i], is_user=True, key=f"{str(i)}_user")
-                    message(st.session_state["generated"][i], key=str(i))
+        try:        
+            handle_session_state()
+            documents = load_data(Path("rotten_tomatoes_movies.csv"))
+            embeddings = create_embeddings()
+            index = create_index(documents, embeddings)
+            query_engine = create_query_engine(index)
+            llm = initialize_llm()
+            # Get the user input
+            user_input = get_text(q_count=st.session_state["q_count"])
+            if user_input and user_input.strip() != "":
+                output = query(
+                    {
+                        "inputs": {
+                            "text": user_input,
+                        }
+                    },
+                    llm,
+                    query_engine,
+                )
+                # Increment q_count, append user input and generated output to session state
+                st.session_state["q_count"] += 1
+                st.session_state["past"].append(user_input)
+                if output:
+                    st.session_state["generated"].append(output)
+                if st.session_state["generated"]:
+                    for i in range(len(st.session_state["generated"]) - 1, -1, -1):
+                        message(st.session_state["past"][i], is_user=True, key=f"{str(i)}_user")
+                        message(st.session_state["generated"][i], key=str(i))
    
-    except Exception as e:
-        tb = traceback.format_exc()
-        #print(tb)
-        st.error(f"Something went wrong: {e}\n\nTraceback:\n{tb} Please try again.")
-     
+        except Exception as e:
+            tb = traceback.format_exc()
+            #print(tb)
+            st.error(f"Something went wrong: {e}\n\nTraceback:\n{tb} Please try again.")
+
+    else:
+        st.warning("Please enter your OpenAI API key to proceed.")
+         
 
 if __name__ == "__main__":
     main()
