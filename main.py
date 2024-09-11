@@ -28,7 +28,7 @@ def handle_session_state():
 
 def initialize_llm():
     llm = ChatOpenAI(
-    model="gpt-4o",
+    model="gpt-4o-2024-08-06",
     temperature=0,
     max_tokens=None,
     timeout=None,
